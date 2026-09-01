@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+    th { background: #f4f4f4; }
+    .config-box { background: #f9f9f9; padding: 15px; border: 1px solid #ddd; width: 400px; }
+  </style>
+</head>
+<body>
+  <h1>Admin Dashboard - APSS Cave Experience</h1>
+
+  <div class="config-box">
+    <h3>Update Site Settings</h3>
+    <form action="/admin/update-settings" method="POST">
+      <p><label>Logo URL:</label><br><input type="text" name="logoUrl" value="<%= settings.logoUrl %>" style="width:100%"></p>
+      <p><label>Title:</label><br><input type="text" name="title" value="<%= settings.title %>" style="width:100%"></p>
+      <p><label>Subtitle:</label><br><input type="text" name="subtitle" value="<%= settings.subtitle %>" style="width:100%"></p>
+      <button type="submit">Save Changes</button>
+    </form>
+  </div>
+
+  <h2>Bookings Overview (10-Oct-2026)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Timeslot</th>
+        <th>Status</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% schedule.forEach(function(item) { %>
+        <tr>
+          <td><strong><%= item.timeslot %></strong></td>
+          <% if (item.booking) { %>
+            <td style="color:red;">Booked</td>
+            <td><%= item.booking.name %></td>
+            <td><%= item.booking.email %></td>
+            <td><%= item.booking.phone %></td>
+          <% } else { %>
+            <td style="color:green;">Available</td>
+            <td>-</td>
+            <td>-</td>
+            <td>-</td>
+          <% } %>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</body>
+</html>

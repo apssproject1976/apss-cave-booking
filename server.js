@@ -82,16 +82,34 @@ async function getSystemSettings() {
   return settings;
 }
 
+// --- Helper: Get Booking Counts per Slot ---
+async function getSlotCounts() {
+  const counts = await Booking.aggregate([
+    { $group: { _id: '$timeSlot', count: { $sum: 1 } } }
+  ]);
+  const slotCounts = {};
+  counts.forEach(item => {
+    if (item._id) {
+      slotCounts[item._id] = item.count;
+    }
+  });
+  return slotCounts;
+}
+
 // --- Public Routes ---
 
 // 1. Home / Booking Page
 app.get('/', async (req, res) => {
   try {
     const settings = await getSystemSettings();
+    const slotCounts = await getSlotCounts();
+
     res.render('index', { 
       slots: settings.orderedSlots, 
       settings,
+      slotCounts,
       success: false,
+      error: null,
       booking: null
     });
   } catch (error) {
@@ -104,14 +122,37 @@ app.get('/', async (req, res) => {
 app.post('/book', async (req, res) => {
   try {
     const { name, email, phone, timeSlot } = req.body;
+    const settings = await getSystemSettings();
+    const currentCount = await Booking.countDocuments({ timeSlot });
+
+    // Determine effective capacity for selected slot
+    const capacity = (settings.customQuotas && settings.customQuotas.has(timeSlot))
+      ? settings.customQuotas.get(timeSlot)
+      : settings.defaultQuota;
+
+    // Guardrail against overbooking
+    if (currentCount >= capacity) {
+      const slotCounts = await getSlotCounts();
+      return res.status(400).render('index', {
+        slots: settings.orderedSlots,
+        settings,
+        slotCounts,
+        success: false,
+        error: 'The selected time slot is already full. Please pick another slot.',
+        booking: null
+      });
+    }
+
     const newBooking = new Booking({ name, email, phone, timeSlot });
     await newBooking.save();
 
-    const settings = await getSystemSettings();
+    const slotCounts = await getSlotCounts();
     res.render('index', { 
       slots: settings.orderedSlots,
       settings,
+      slotCounts,
       success: true,
+      error: null,
       booking: newBooking
     });
   } catch (error) {

@@ -4,80 +4,89 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= settings.title %></title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      <% if (settings.bgImageUrl) { %>
-        background: url('<%= settings.bgImageUrl %>') no-repeat center center fixed;
+  <link rel="stylesheet" href="/css/style.css">
+  <% if (settings.bgImageUrl) { %>
+    <style>
+      body {
+        background-image: url('<%= settings.bgImageUrl %>');
         background-size: cover;
-      <% } else { %>
-        background-color: #f8f9fa;
-      <% } %>
-      min-height: 100vh;
-      padding-top: 40px;
-      padding-bottom: 60px;
-    }
-    .booking-card {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(5px);
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    }
-    .site-logo {
-      width: <%= settings.logoWidth || 120 %>px;
-      height: auto;
-      object-fit: contain;
-    }
-  </style>
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+      }
+    </style>
+  <% } %>
 </head>
 <body>
-  <div class="container col-md-8 col-lg-6">
-    <div class="card booking-card p-4 p-md-5">
-      <div class="text-center mb-4">
-        <% if (settings.logoUrl) { %>
-          <img src="<%= settings.logoUrl %>" alt="Logo" class="site-logo mb-3">
-        <% } %>
-        <h1 class="h3 fw-bold mb-1"><%= settings.title %></h1>
-        <p class="text-muted small">Select an available time slot to reserve your experience</p>
-      </div>
-
-      <% if (success && booking) { %>
-        <div class="alert alert-success" role="alert">
-          <h5 class="alert-heading fw-bold">Booking Confirmed!</h5>
-          <p class="mb-0">Thank you, <strong><%= booking.name %></strong>. Your reservation for <strong><%= booking.timeSlot %></strong> is confirmed.</p>
-        </div>
+  <div class="container">
+    <header class="header">
+      <% if (settings.logoUrl) { %>
+        <img src="<%= settings.logoUrl %>" alt="Logo" style="width: <%= settings.logoWidth %>px;" class="logo">
       <% } %>
+      <h1><%= settings.title %></h1>
+    </header>
 
-      <form action="/book" method="POST">
-        <div class="mb-3">
-          <label for="name" class="form-label fw-semibold">Full Name</label>
-          <input type="text" class="form-control" id="name" name="name" required placeholder="John Doe">
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-error">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <% if (success && booking) { %>
+      <div class="alert alert-success">
+        <h2>Booking Confirmed!</h2>
+        <p><strong>Name:</strong> <%= booking.name %></p>
+        <p><strong>Email:</strong> <%= booking.email %></p>
+        <p><strong>Time Slot:</strong> <%= booking.timeSlot %></p>
+        <a href="/" class="btn">Book Another Session</a>
+      </div>
+    <% } else { %>
+      <form action="/book" method="POST" class="booking-form">
+        <div class="form-group">
+          <label for="name">Full Name *</label>
+          <input type="text" id="name" name="name" required>
         </div>
 
-        <div class="mb-3">
-          <label for="email" class="form-label fw-semibold">Email Address</label>
-          <input type="email" class="form-control" id="email" name="email" required placeholder="john@example.com">
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" name="email" required>
         </div>
 
-        <div class="mb-3">
-          <label for="phone" class="form-label fw-semibold">Phone Number (Optional)</label>
-          <input type="tel" class="form-control" id="phone" name="phone" placeholder="+852 9123 4567">
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" name="phone">
         </div>
 
-        <div class="mb-4">
-          <label for="timeSlot" class="form-label fw-semibold">Select Time Slot</label>
-          <select class="form-select" id="timeSlot" name="timeSlot" required>
-            <option value="" selected disabled>Choose a session...</option>
-            <% slots.forEach(slot => { %>
-              <option value="<%= slot %>"><%= slot %></option>
-            <% }) %>
+        <div class="form-group">
+          <label for="timeSlot">Select Time Slot *</label>
+          <select id="timeSlot" name="timeSlot" required>
+            <option value="" disabled selected>-- Choose a time slot --</option>
+            <% slots.forEach(function(slot) { 
+                // Resolve custom capacity override vs default capacity
+                let customQuota;
+                if (settings.customQuotas && typeof settings.customQuotas.get === 'function') {
+                  customQuota = settings.customQuotas.get(slot);
+                } else if (settings.customQuotas) {
+                  customQuota = settings.customQuotas[slot];
+                }
+
+                const capacity = (customQuota !== undefined && customQuota !== null) 
+                  ? customQuota 
+                  : settings.defaultQuota;
+
+                const bookedCount = (slotCounts && slotCounts[slot]) ? slotCounts[slot] : 0;
+                const isFull = bookedCount >= capacity;
+            %>
+              <option value="<%= slot %>" <%= isFull ? 'disabled' : '' %>>
+                <%= slot %> - <%= isFull ? 'Full' : `Available (${bookedCount}/${capacity})` %>
+              </option>
+            <% }); %>
           </select>
         </div>
 
-        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Confirm Reservation</button>
+        <button type="submit" class="btn">Submit Booking</button>
       </form>
-    </div>
+    <% } %>
   </div>
 </body>
 </html>

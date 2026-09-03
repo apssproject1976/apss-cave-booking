@@ -94,7 +94,7 @@
                   const isFull = remaining === 0;
               %>
                 <option value="<%= slot %>" <%= isFull ? 'disabled' : '' %>>
-                  <%= slot %> - <%= isFull ? 'Full' : `${remaining} spot(s) remaining` %>
+                  <%= slot %> - <%= isFull ? 'Full' : `${remaining} seat(s) remaining` %>
                 </option>
               <% }); %>
             </select>

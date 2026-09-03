@@ -62,7 +62,7 @@
           <select id="timeSlot" name="timeSlot" required>
             <option value="" disabled selected>-- Choose a time slot --</option>
             <% slots.forEach(function(slot) { 
-                // Resolve custom capacity override vs default capacity
+                // Determine capacity: custom quota override vs default quota
                 let customQuota;
                 if (settings.customQuotas && typeof settings.customQuotas.get === 'function') {
                   customQuota = settings.customQuotas.get(slot);
@@ -74,11 +74,11 @@
                   ? customQuota 
                   : settings.defaultQuota;
 
-                const bookedCount = (slotCounts && slotCounts[slot]) ? slotCounts[slot] : 0;
-                const isFull = bookedCount >= capacity;
+                const count = (typeof slotCounts !== 'undefined' && slotCounts && slotCounts[slot]) ? slotCounts[slot] : 0;
+                const isFull = count >= capacity;
             %>
               <option value="<%= slot %>" <%= isFull ? 'disabled' : '' %>>
-                <%= slot %> - <%= isFull ? 'Full' : `Available (${bookedCount}/${capacity})` %>
+                <%= slot %> - <%= isFull ? 'Full' : `Available (${count}/${capacity})` %>
               </option>
             <% }); %>
           </select>

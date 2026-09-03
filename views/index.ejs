@@ -3,207 +3,108 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= settings.title %></title>
+  <title><%= (typeof settings !== 'undefined' && settings.title) ? settings.title : 'APSS Cave Experience Booking' %></title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { background-color: #f4f7f6; color: #333; padding: 40px 20px; }
+    .container { max-width: 650px; margin: 0 auto; }
+    
+    .card { background: white; padding: 35px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
+    h1 { color: #2c3e50; font-size: 1.8rem; margin-bottom: 20px; text-align: center; }
+    p.description { color: #666; margin-bottom: 25px; text-align: center; line-height: 1.5; }
 
-    body {
-      padding: 40px 20px;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    /* Alert Banner */
+    .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; border-radius: 6px; padding: 15px; margin-bottom: 25px; text-align: center; font-weight: 600; }
+    
+    /* Confirmation Details Box */
+    .details-box { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; margin-bottom: 25px; text-align: left; }
+    .details-header { font-weight: 700; color: #2c3e50; margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+    .details-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.95rem; }
+    .label { font-weight: 600; color: #555; }
+    .value { font-weight: 700; color: #2c3e50; }
 
-      <% if (settings.bgImageUrl) { %>
-        background: url('<%= settings.bgImageUrl %>') no-repeat center center fixed;
-        background-size: cover;
-      <% } else { %>
-        background-color: #f4f7f6;
-      <% } %>
-    }
+    /* Form Styles */
+    .form-group { margin-bottom: 20px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; color: #444; }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    input:focus, select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 5px rgba(52,152,219,0.3); }
 
-    .booking-card {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      padding: 35px;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-      max-width: 550px;
-      width: 100%;
-    }
-
-    .logo-container {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    .logo-container img {
-      max-height: 80px;
-      object-fit: contain;
-    }
-
-    h1 {
-      text-align: center;
-      color: #2c3e50;
-      font-size: 1.6rem;
-      margin-bottom: 25px;
-    }
-
-    .alert-success {
-      background-color: #d4edda;
-      color: #155724;
-      padding: 12px 16px;
-      border-radius: 6px;
-      margin-bottom: 20px;
-      border: 1px solid #c3e6cb;
-      text-align: center;
-      font-weight: 600;
-    }
-
-    .form-group {
-      margin-bottom: 18px;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 600;
-      color: #444;
-    }
-
-    .form-group input,
-    .form-group select {
-      width: 100%;
-      padding: 11px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 1rem;
-      transition: border-color 0.2s;
-    }
-
-    .form-group input:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: #3498db;
-    }
-
-    .btn-submit {
-      width: 100%;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      padding: 14px;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      margin-top: 10px;
-    }
-
-    .btn-submit:hover {
-      background-color: #2980b9;
-    }
-
-    .slot-status-list {
-      margin-top: 25px;
-      border-top: 1px solid #eee;
-      padding-top: 20px;
-    }
-
-    .slot-status-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #555;
-      margin-bottom: 10px;
-    }
-
-    .slot-badge {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 12px;
-      background: #f8f9fa;
-      border-radius: 4px;
-      margin-bottom: 6px;
-      font-size: 0.88rem;
-    }
-
-    .badge-full {
-      color: #e74c3c;
-      font-weight: bold;
-    }
-
-    .badge-open {
-      color: #27ae60;
-      font-weight: bold;
-    }
+    .btn-submit { width: 100%; background-color: #3498db; color: white; border: none; padding: 12px; border-radius: 4px; font-size: 1.05rem; font-weight: 600; cursor: pointer; transition: background 0.2s ease; margin-top: 10px; }
+    .btn-submit:hover { background-color: #2980b9; }
   </style>
 </head>
 <body>
 
-  <div class="booking-card">
-    <% if (settings.logoUrl) { %>
-      <div class="logo-container">
-        <img src="<%= settings.logoUrl %>" alt="Brand Logo">
-      </div>
-    <% } %>
+  <div class="container">
+    <div class="card">
+      <h1><%= (typeof settings !== 'undefined' && settings.title) ? settings.title : 'APSS Cave Experience' %></h1>
+      <p class="description">Select your preferred 10-minute session and fill in your contact information below to reserve your entry.</p>
 
-    <h1><%= settings.title %></h1>
-
-    <% if (success) { %>
-      <div class="alert-success">
-        ✓ Your reservation has been successfully booked!
-      </div>
-    <% } %>
-
-    <form action="/booking" method="POST">
-      <div class="form-group">
-        <label for="name">Full Name *</label>
-        <input type="text" id="name" name="name" placeholder="e.g. John Doe" required>
-      </div>
-
-      <div class="form-group">
-        <label for="email">Email Address *</label>
-        <input type="email" id="email" name="email" placeholder="e.g. john@example.com" required>
-      </div>
-
-      <div class="form-group">
-        <label for="phone">Phone Number</label>
-        <input type="tel" id="phone" name="phone" placeholder="e.g. +852 9123 4567">
-      </div>
-
-      <div class="form-group">
-        <label for="timeSlot">Select Time Slot *</label>
-        <select id="timeSlot" name="timeSlot" required>
-          <option value="" disabled selected>-- Select an available slot --</option>
-          <% slotData.forEach(slot => { %>
-            <option value="<%= slot.name %>" <%= slot.available === 0 ? 'disabled' : '' %>>
-              <%= slot.name %> (<%= slot.available %> space<%= slot.available === 1 ? '' : 's' %> left)
-            </option>
-          <% }) %>
-        </select>
-      </div>
-
-      <button type="submit" class="btn-submit">Confirm Reservation</button>
-    </form>
-
-    <div class="slot-status-list">
-      <div class="slot-status-title">Real-time Slot Availability</div>
-      <% slotData.forEach(slot => { %>
-        <div class="slot-badge">
-          <span><%= slot.name %></span>
-          <% if (slot.available === 0) { %>
-            <span class="badge-full">FULL</span>
-          <% } else { %>
-            <span class="badge-open"><%= slot.available %> / <%= slot.capacity %> Available</span>
-          <% } %>
+      <!-- Success Notification & Reservation Details -->
+      <% if (typeof success !== 'undefined' && success) { %>
+        <div class="alert-success">
+          ✓ Your reservation has been successfully booked!
         </div>
-      <% }) %>
+
+        <% if (typeof booking !== 'undefined' && booking) { %>
+          <div class="details-box">
+            <div class="details-header">Confirmed Reservation Details</div>
+            <div class="details-row">
+              <span class="label">Name:</span>
+              <span class="value"><%= booking.name %></span>
+            </div>
+            <div class="details-row">
+              <span class="label">Email:</span>
+              <span class="value"><%= booking.email %></span>
+            </div>
+            <div class="details-row">
+              <span class="label">Phone:</span>
+              <span class="value"><%= booking.phone || 'N/A' %></span>
+            </div>
+            <div class="details-row">
+              <span class="label">Time Slot:</span>
+              <span class="value"><%= booking.timeSlot %></span>
+            </div>
+            <div class="details-row">
+              <span class="label">Booking ID:</span>
+              <span class="value"><%= booking._id %></span>
+            </div>
+          </div>
+        <% } %>
+      <% } %>
+
+      <!-- Booking Form -->
+      <form action="/book" method="POST">
+        <div class="form-group">
+          <label for="name">Full Name *</label>
+          <input type="text" id="name" name="name" required placeholder="John Doe">
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" name="email" required placeholder="john@example.com">
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" name="phone" placeholder="+852 1234 5678">
+        </div>
+
+        <div class="form-group">
+          <label for="timeSlot">Select Time Slot *</label>
+          <select id="timeSlot" name="timeSlot" required>
+            <option value="" disabled selected>-- Select a 10-minute session --</option>
+            <% if (typeof slots !== 'undefined' && slots.length > 0) { %>
+              <% slots.forEach(function(slot) { %>
+                <option value="<%= slot %>"><%= slot %></option>
+              <% }); %>
+            <% } %>
+          </select>
+        </div>
+
+        <button type="submit" class="btn-submit">Confirm Reservation</button>
+      </form>
+
     </div>
   </div>
 

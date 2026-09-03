@@ -1,52 +1,28 @@
-require('dotenv').config(); // Load environment variables from .env
-
 const express = require('express');
 const mongoose = require('mongoose');
-const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const basicAuth = require('express-basic-auth');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Multer Storage Configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadsDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${Date.now()}${ext}`);
-  }
-});
-const upload = multer({ storage });
-
-// Multer multi-field upload configuration
-const uploadFields = upload.fields([
-  { name: 'logo', maxCount: 1 },
-  { name: 'bgImage', maxCount: 1 }
-]);
-
-// Middleware
+// --- Middleware Setup ---
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+
+// Extended urlencoded parsing handles nested form objects like customQuotas[slot]
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// MongoDB Connection (Loads MONGODB_URI directly from .env)
+// --- Database Connection ---
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/cave_booking';
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('MongoDB connected successfully'))
-  .catch(err => console.error('MongoDB connection error:', err));
 
-// MongoDB Schemas & Models
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('Successfully connected to MongoDB Atlas'))
+  .catch((err) => console.error('MongoDB connection error:', err));
+
+// --- Database Schemas & Models ---
 const bookingSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true },
@@ -55,258 +31,205 @@ const bookingSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// Generator function for 10-minute slots (4 per hour with 5-min buffers)
-function generate10MinSlots() {
-  const slots = [];
-  const hours = [10, 11, 12, 13, 14, 15, 16]; // 10:00 AM to 4:30 PM
-
-  hours.forEach(hour => {
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour > 12 ? hour - 12 : hour;
-    const pad = (n) => String(n).padStart(2, '0');
-
-    // 4 sessions per hour: :00-:10, :15-:25, :30-:40, :45-:55
-    const intervals = [
-      { startM: 0,  endM: 10 },
-      { startM: 15, endM: 25 },
-      { startM: 30, endM: 40 },
-      { startM: 45, endM: 55 }
-    ];
-
-    for (const { startM, endM } of intervals) {
-      // Cut off at 4:30 PM (16:30)
-      if (hour === 16 && startM >= 30) break;
-
-      const startTime = `${pad(displayHour)}:${pad(startM)} ${period}`;
-      const endTime = `${pad(displayHour)}:${pad(endM)} ${period}`;
-      slots.push(`${startTime} - ${endTime}`);
-    }
-  });
-
-  return slots;
-}
-
-const settingsSchema = new mongoose.Schema({
-  title: { type: String, default: 'APSS Cave Experience Booking System' },
-  logoUrl: { type: String, default: '' },
-  bgImageUrl: { type: String, default: '' },
+const settingSchema = new mongoose.Schema({
+  title: { type: String, default: 'APSS Cave Experience' },
   defaultQuota: { type: Number, default: 10 },
   customQuotas: { type: Map, of: Number, default: {} },
-  slots: {
-    type: [String],
-    default: generate10MinSlots
-  }
+  orderedSlots: { type: [String], default: [] }
 });
 
 const Booking = mongoose.model('Booking', bookingSchema);
-const Settings = mongoose.model('Settings', settingsSchema);
+const Setting = mongoose.model('Setting', settingSchema);
 
-// Helper to retrieve single Settings document
-async function getSettings() {
-  let settings = await Settings.findOne();
+// --- Helper: Generate 10-Min Session Slots with a.m. / p.m. (10:00 a.m. to 4:30 p.m.) ---
+function generateDefaultSlots() {
+  const slots = [];
+  const startHour = 10;
+  const endHour = 16; // 16:00 (4:00 p.m.) block
+
+  for (let hour = startHour; hour <= endHour; hour++) {
+    // Determine 12-hour display number and period tag (a.m. or p.m.)
+    const displayHour = hour > 12 ? hour - 12 : hour;
+    const formattedHour = String(displayHour).padStart(2, '0');
+    const period = hour >= 12 ? 'p.m.' : 'a.m.';
+
+    // 4 sessions per hour with 5-minute buffer
+    const intervals = [
+      { start: '00', end: '10' },
+      { start: '15', end: '25' },
+      { start: '30', end: '40' },
+      { start: '45', end: '55' }
+    ];
+
+    for (const interval of intervals) {
+      // Cut off after 4:25 p.m. session (stops before 4:30 p.m.)
+      if (hour === 16 && parseInt(interval.start, 10) >= 30) break;
+
+      slots.push(`${formattedHour}:${interval.start} ${period} - ${formattedHour}:${interval.end} ${period}`);
+    }
+  }
+  return slots;
+}
+
+// Helper function to initialize or retrieve system settings
+async function getSystemSettings() {
+  let settings = await Setting.findOne();
+  const defaultSlots = generateDefaultSlots();
+
   if (!settings) {
-    settings = await Settings.create({});
+    settings = await Setting.create({ orderedSlots: defaultSlots });
+  } else if (!settings.orderedSlots || settings.orderedSlots.length === 0) {
+    settings.orderedSlots = defaultSlots;
+    await settings.save();
   }
   return settings;
 }
 
-// ==========================================
-// PUBLIC USER ROUTES
-// ==========================================
+// --- Public Routes ---
 
-// GET / - Public Booking Page
+// 1. Home / Booking Page
 app.get('/', async (req, res) => {
   try {
-    const settings = await getSettings();
-    const bookings = await Booking.find({});
-
-    // Count existing reservations per slot
-    const slotCounts = {};
-    bookings.forEach(b => {
-      slotCounts[b.timeSlot] = (slotCounts[b.timeSlot] || 0) + 1;
-    });
-
-    // Calculate dynamic available capacities
-    const slotData = settings.slots.map(slot => {
-      const capacity = (settings.customQuotas && settings.customQuotas.has(slot))
-        ? settings.customQuotas.get(slot)
-        : settings.defaultQuota;
-      const booked = slotCounts[slot] || 0;
-      return {
-        name: slot,
-        capacity,
-        booked,
-        available: Math.max(0, capacity - booked)
-      };
-    });
-
-    res.render('index', {
+    const settings = await getSystemSettings();
+    
+    res.render('index', { 
+      slots: settings.orderedSlots, 
       settings,
-      slotData,
-      success: req.query.success === '1'
+      success: false,
+      booking: null
     });
-  } catch (err) {
-    console.error('Error loading booking page:', err);
+  } catch (error) {
+    console.error('Error rendering homepage:', error);
     res.status(500).send('Server Error');
   }
 });
 
-// POST /booking - Create Reservation
-app.post('/booking', async (req, res) => {
+// 2. Submit Booking Route & Display Confirmation Summary
+app.post('/book', async (req, res) => {
   try {
     const { name, email, phone, timeSlot } = req.body;
-    const settings = await getSettings();
 
-    const capacity = (settings.customQuotas && settings.customQuotas.has(timeSlot))
-      ? settings.customQuotas.get(timeSlot)
-      : settings.defaultQuota;
+    const newBooking = new Booking({
+      name,
+      email,
+      phone,
+      timeSlot
+    });
 
-    const currentCount = await Booking.countDocuments({ timeSlot });
+    await newBooking.save();
 
-    if (currentCount >= capacity) {
-      return res.status(400).send('Selected time slot is fully booked.');
-    }
+    const settings = await getSystemSettings();
 
-    await Booking.create({ name, email, phone, timeSlot });
-    res.redirect('/?success=1');
-  } catch (err) {
-    console.error('Error creating booking:', err);
-    res.status(500).send('Failed to complete booking.');
+    res.render('index', { 
+      slots: settings.orderedSlots,
+      settings,
+      success: true,
+      booking: newBooking
+    });
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    res.status(500).send('Failed to process booking. Please try again.');
   }
 });
 
-// ==========================================
-// ADMIN ROUTES
-// ==========================================
+// --- Admin Basic Authentication Middleware ---
+app.use('/admin', basicAuth({
+  users: { 
+    [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'cave2026pass' 
+  },
+  challenge: true, // Prompts browser native login dialog
+  realm: 'APSS Cave Admin Area'
+}));
 
-// GET /admin/dashboard - Admin Interface
+// --- Admin Routes ---
+
+// 3. Redirect /admin to /admin/dashboard
+app.get('/admin', (req, res) => {
+  res.redirect('/admin/dashboard');
+});
+
+// 4. Admin Dashboard
 app.get('/admin/dashboard', async (req, res) => {
   try {
-    const settings = await getSettings();
-    const bookings = await Booking.find({}).sort({ createdAt: -1 });
+    const bookings = await Booking.find({}).sort({ createdAt: -1 }).lean();
+    const settings = await getSystemSettings();
 
     res.render('admin-dashboard', {
+      bookings,
       settings,
-      slots: settings.slots,
-      bookings
+      slots: settings.orderedSlots
     });
-  } catch (err) {
-    console.error('Error loading admin dashboard:', err);
-    res.status(500).send('Server Error');
+  } catch (error) {
+    console.error('Error rendering admin dashboard:', error);
+    res.status(500).send('Error loading dashboard');
   }
 });
 
-// POST /admin/settings - Update Settings, Logo & Background Image
-app.post('/admin/settings', uploadFields, async (req, res) => {
-  try {
-    const { title, defaultQuota, customQuotas } = req.body;
-    const settings = await getSettings();
-
-    settings.title = title || settings.title;
-    settings.defaultQuota = parseInt(defaultQuota, 10) || settings.defaultQuota;
-
-    // Handle file uploads
-    if (req.files) {
-      if (req.files.logo && req.files.logo[0]) {
-        settings.logoUrl = `/uploads/${req.files.logo[0].filename}`;
-      }
-      if (req.files.bgImage && req.files.bgImage[0]) {
-        settings.bgImageUrl = `/uploads/${req.files.bgImage[0].filename}`;
-      }
-    }
-
-    // Process custom slot quotas map
-    const newCustomQuotas = new Map();
-    if (customQuotas && typeof customQuotas === 'object') {
-      Object.keys(customQuotas).forEach(slot => {
-        const val = customQuotas[slot];
-        if (val !== '' && val !== null && !isNaN(val)) {
-          newCustomQuotas.set(slot, parseInt(val, 10));
-        }
-      });
-    }
-    settings.customQuotas = newCustomQuotas;
-
-    await settings.save();
-    res.redirect('/admin/dashboard');
-  } catch (err) {
-    console.error('Error updating settings:', err);
-    res.status(500).send('Failed to update system settings.');
-  }
-});
-
-// POST /admin/slots/reorder - Drag-and-Drop Reorder API Endpoint
-app.post('/admin/slots/reorder', async (req, res) => {
-  try {
-    const { orderedSlots } = req.body;
-    if (!Array.isArray(orderedSlots)) {
-      return res.status(400).json({ error: 'Invalid slot ordering data.' });
-    }
-
-    const settings = await getSettings();
-    settings.slots = orderedSlots;
-    await settings.save();
-
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Error reordering slots:', err);
-    res.status(500).json({ error: 'Failed to reorder slots.' });
-  }
-});
-
-// POST /admin/bookings/delete/:id - Delete Single Reservation Entry
+// 5. Delete Booking
 app.post('/admin/bookings/delete/:id', async (req, res) => {
   try {
     await Booking.findByIdAndDelete(req.params.id);
     res.redirect('/admin/dashboard');
-  } catch (err) {
-    console.error('Error deleting booking:', err);
-    res.status(500).send('Failed to delete reservation entry.');
+  } catch (error) {
+    console.error('Error deleting booking:', error);
+    res.status(500).send('Failed to delete entry');
   }
 });
 
-// GET /admin/bookings/export-csv - CSV Export Endpoint
-app.get('/admin/bookings/export-csv', async (req, res) => {
+// 6. Update Capacity & Settings
+app.post('/admin/settings', async (req, res) => {
   try {
-    const bookings = await Booking.find({}).sort({ createdAt: -1 });
+    const { defaultQuota, customQuotas } = req.body;
+    const settings = await getSystemSettings();
 
-    const headers = ['Booking ID', 'Created Date', 'Time Slot', 'Name', 'Email', 'Phone'];
+    // Update default quota
+    if (defaultQuota) {
+      settings.defaultQuota = parseInt(defaultQuota, 10) || 10;
+    }
 
-    const sanitize = (val) => {
-      if (val === null || val === undefined) return '""';
-      const str = String(val).replace(/"/g, '""');
-      return `"${str}"`;
-    };
+    // Safely parse and map custom quotas
+    const quotaMap = new Map();
+    if (customQuotas && typeof customQuotas === 'object') {
+      for (const [slot, quotaVal] of Object.entries(customQuotas)) {
+        if (quotaVal !== '' && quotaVal !== null && quotaVal !== undefined) {
+          const parsedVal = parseInt(quotaVal, 10);
+          if (!isNaN(parsedVal)) {
+            quotaMap.set(slot, parsedVal);
+          }
+        }
+      }
+    }
 
-    const rows = bookings.map(b => [
-      sanitize(b._id),
-      sanitize(new Date(b.createdAt).toISOString()),
-      sanitize(b.timeSlot),
-      sanitize(b.name),
-      sanitize(b.email),
-      sanitize(b.phone || '')
-    ].join(','));
+    settings.customQuotas = quotaMap;
+    settings.markModified('customQuotas');
 
-    const csvContent = [headers.join(','), ...rows].join('\n');
-
-    const filename = `reservations-export-${new Date().toISOString().slice(0, 10)}.csv`;
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-    // Prepend UTF-8 BOM for Excel compatibility
-    res.status(200).send('\uFEFF' + csvContent);
-  } catch (err) {
-    console.error('Error exporting CSV:', err);
-    res.status(500).send('Failed to export CSV data.');
+    await settings.save();
+    res.redirect('/admin/dashboard');
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    res.status(500).send(`Failed to save settings: ${error.message}`);
   }
 });
 
-// GET /admin/logout - Basic Logout Redirection
-app.get('/admin/logout', (req, res) => {
-  res.redirect('/');
+// 7. Save Drag-and-Drop Slot Order
+app.post('/admin/slots/reorder', async (req, res) => {
+  try {
+    const { orderedSlots } = req.body;
+    if (Array.isArray(orderedSlots)) {
+      const settings = await getSystemSettings();
+      settings.orderedSlots = orderedSlots;
+      await settings.save();
+      return res.json({ success: true });
+    }
+    res.status(400).json({ error: 'Invalid slot list' });
+  } catch (error) {
+    console.error('Error updating slot order:', error);
+    res.status(500).json({ error: 'Failed to update order' });
+  }
 });
 
-// Start Express Server
+// --- Server Startup ---
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

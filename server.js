@@ -32,6 +32,9 @@ const bookingSchema = new mongoose.Schema({
 
 const settingSchema = new mongoose.Schema({
   title: { type: String, default: 'APSS Cave Experience' },
+  logoUrl: { type: String, default: '' },
+  logoWidth: { type: Number, default: 120 },
+  bgImageUrl: { type: String, default: '' },
   defaultQuota: { type: Number, default: 10 },
   customQuotas: { type: Map, of: Number, default: {} },
   orderedSlots: { type: [String], default: [] }
@@ -40,7 +43,7 @@ const settingSchema = new mongoose.Schema({
 const Booking = mongoose.model('Booking', bookingSchema);
 const Setting = mongoose.model('Setting', settingSchema);
 
-// --- Helper: Generate 10-Min Session Slots with a.m. / p.m. (10:00 a.m. to 4:30 p.m.) ---
+// --- Helper: Generate 10-Min Session Slots ---
 function generateDefaultSlots() {
   const slots = [];
   const startHour = 10;
@@ -153,12 +156,10 @@ app.use('/admin', basicAuth({
 
 // --- Admin Routes ---
 
-// 3. Redirect /admin to /admin/dashboard
 app.get('/admin', (req, res) => {
   res.redirect('/admin/dashboard');
 });
 
-// 4. Admin Dashboard
 app.get('/admin/dashboard', async (req, res) => {
   try {
     const bookings = await Booking.find({}).sort({ createdAt: -1 }).lean();
@@ -175,7 +176,6 @@ app.get('/admin/dashboard', async (req, res) => {
   }
 });
 
-// 5. Delete Booking
 app.post('/admin/bookings/delete/:id', async (req, res) => {
   try {
     await Booking.findByIdAndDelete(req.params.id);
@@ -186,11 +186,16 @@ app.post('/admin/bookings/delete/:id', async (req, res) => {
   }
 });
 
-// 6. Update Capacity & Settings
+// Save System Settings (Title, Logo, Background, Quotas)
 app.post('/admin/settings', async (req, res) => {
   try {
-    const { defaultQuota, customQuotas } = req.body;
+    const { title, logoUrl, logoWidth, bgImageUrl, defaultQuota, customQuotas } = req.body;
     const settings = await getSystemSettings();
+
+    if (title !== undefined) settings.title = title || 'APSS Cave Experience';
+    if (logoUrl !== undefined) settings.logoUrl = logoUrl.trim();
+    if (logoWidth !== undefined) settings.logoWidth = parseInt(logoWidth, 10) || 120;
+    if (bgImageUrl !== undefined) settings.bgImageUrl = bgImageUrl.trim();
 
     if (defaultQuota) {
       settings.defaultQuota = parseInt(defaultQuota, 10) || 10;
@@ -219,7 +224,6 @@ app.post('/admin/settings', async (req, res) => {
   }
 });
 
-// 7. Save Drag-and-Drop Slot Order
 app.post('/admin/slots/reorder', async (req, res) => {
   try {
     const { orderedSlots } = req.body;
@@ -236,7 +240,6 @@ app.post('/admin/slots/reorder', async (req, res) => {
   }
 });
 
-// --- Server Startup ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

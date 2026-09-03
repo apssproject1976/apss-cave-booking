@@ -24,19 +24,27 @@
     .drag-handle:active {
       cursor: grabbing;
     }
+    .logo-preview {
+      max-height: 80px;
+      width: auto;
+      object-fit: contain;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <div>
-        <h1 class="h3 mb-0">APSS Cave Experience</h1>
+        <h1 class="h3 mb-0"><%= settings.title %></h1>
         <p class="text-muted mb-0">Admin Management Dashboard</p>
       </div>
-      <a href="/view/dashboard" class="btn btn-outline-secondary btn-sm" target="_blank">View Read-Only Mode</a>
+      <div>
+        <a href="/" class="btn btn-outline-primary btn-sm me-2" target="_blank">View Live User Page</a>
+        <a href="/view/dashboard" class="btn btn-outline-secondary btn-sm" target="_blank">View Read-Only Portal</a>
+      </div>
     </div>
 
-    <!-- Overview Metrics -->
+    <!-- Metrics -->
     <div class="row mb-4">
       <div class="col-md-6">
         <div class="card p-3">
@@ -49,6 +57,72 @@
           <div class="text-muted small">Default Slot Capacity</div>
           <div class="h2 mb-0 fw-bold"><%= settings.defaultQuota %> attendees</div>
         </div>
+      </div>
+    </div>
+
+    <!-- Customization & Capacity Form -->
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0">Page Customization & Capacity Settings</h5>
+      </div>
+      <div class="card-body">
+        <form action="/admin/settings" method="POST">
+          
+          <h6 class="fw-bold mb-3 text-primary">Branding & Appearance</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label for="title" class="form-label fw-bold">Page Title</label>
+              <input type="text" class="form-control" id="title" name="title" value="<%= settings.title %>" required>
+            </div>
+            
+            <div class="col-md-6">
+              <label for="bgImageUrl" class="form-label fw-bold">Background Picture Image URL</label>
+              <input type="url" class="form-control" id="bgImageUrl" name="bgImageUrl" value="<%= settings.bgImageUrl || '' %>" placeholder="https://example.com/background.jpg">
+            </div>
+
+            <div class="col-md-8">
+              <label for="logoUrl" class="form-label fw-bold">Logo Image URL</label>
+              <input type="url" class="form-control" id="logoUrl" name="logoUrl" value="<%= settings.logoUrl || '' %>" placeholder="https://example.com/logo.png">
+            </div>
+
+            <div class="col-md-4">
+              <label for="logoWidth" class="form-label fw-bold">Logo Size (Width in Pixels)</label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="logoWidth" name="logoWidth" value="<%= settings.logoWidth || 120 %>" min="30" max="500">
+                <span class="input-group-text">px</span>
+              </div>
+            </div>
+          </div>
+
+          <% if (settings.logoUrl) { %>
+            <div class="mb-4 p-3 bg-light rounded d-flex align-items-center gap-3">
+              <span class="small fw-semibold text-muted">Current Logo Preview:</span>
+              <img src="<%= settings.logoUrl %>" alt="Logo Preview" class="logo-preview" style="width: <%= settings.logoWidth %>px;">
+            </div>
+          <% } %>
+
+          <hr class="my-4">
+
+          <h6 class="fw-bold mb-3 text-primary">Capacity Settings</h6>
+          <div class="mb-4 col-md-4">
+            <label for="defaultQuota" class="form-label fw-bold">Default Capacity Per Slot</label>
+            <input type="number" class="form-control" id="defaultQuota" name="defaultQuota" value="<%= settings.defaultQuota %>" min="1" required>
+          </div>
+
+          <h6 class="fw-semibold mb-3">Custom Slot Capacity Overrides</h6>
+          <div class="row g-3 mb-4">
+            <% slots.forEach(slot => { %>
+              <div class="col-md-4">
+                <label class="form-label small text-muted mb-1"><%= slot %></label>
+                <input type="number" class="form-control form-control-sm" name="customQuotas[<%= slot %>]" 
+                       value="<%= settings.customQuotas && settings.customQuotas.get ? (settings.customQuotas.get(slot) || '') : '' %>" 
+                       placeholder="Default (<%= settings.defaultQuota %>)" min="0">
+              </div>
+            <% }) %>
+          </div>
+
+          <button type="submit" class="btn btn-primary fw-bold">Save All Settings</button>
+        </form>
       </div>
     </div>
 
@@ -99,35 +173,6 @@
       </div>
     </div>
 
-    <!-- Capacity & Quota Settings Form -->
-    <div class="card">
-      <div class="card-header bg-white py-3">
-        <h5 class="card-title mb-0">Slot Capacity Settings</h5>
-      </div>
-      <div class="card-body">
-        <form action="/admin/settings" method="POST">
-          <div class="mb-4 col-md-4">
-            <label for="defaultQuota" class="form-label fw-bold">Default Capacity Per Slot</label>
-            <input type="number" class="form-control" id="defaultQuota" name="defaultQuota" value="<%= settings.defaultQuota %>" min="1" required>
-          </div>
-
-          <h6 class="fw-bold mb-3">Custom Slot Capacity Overrides</h6>
-          <div class="row g-3 mb-4">
-            <% slots.forEach(slot => { %>
-              <div class="col-md-4">
-                <label class="form-label small text-muted mb-1"><%= slot %></label>
-                <input type="number" class="form-control form-control-sm" name="customQuotas[<%= slot %>]" 
-                       value="<%= settings.customQuotas && settings.customQuotas.get ? (settings.customQuotas.get(slot) || '') : '' %>" 
-                       placeholder="Default (<%= settings.defaultQuota %>)" min="0">
-              </div>
-            <% }) %>
-          </div>
-
-          <button type="submit" class="btn btn-primary">Save Capacity Settings</button>
-        </form>
-      </div>
-    </div>
-
     <!-- Drag-and-Drop Slot Reordering -->
     <div class="card">
       <div class="card-header bg-white py-3">
@@ -150,14 +195,12 @@
   </div>
 
   <script>
-    // Initialize Sortable.js for drag-and-drop reordering
     const slotList = document.getElementById('slotList');
     const sortable = new Sortable(slotList, {
       animation: 150,
       handle: '.drag-handle'
     });
 
-    // Handle AJAX request to save new slot order
     document.getElementById('saveOrderBtn').addEventListener('click', async () => {
       const items = slotList.querySelectorAll('li');
       const orderedSlots = Array.from(items).map(item => item.getAttribute('data-slot'));

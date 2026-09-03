@@ -10,7 +10,6 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
-// Extended urlencoded parsing handles nested form objects like customQuotas[slot]
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -45,15 +44,13 @@ const Setting = mongoose.model('Setting', settingSchema);
 function generateDefaultSlots() {
   const slots = [];
   const startHour = 10;
-  const endHour = 16; // 16:00 (4:00 p.m.) block
+  const endHour = 16;
 
   for (let hour = startHour; hour <= endHour; hour++) {
-    // Determine 12-hour display number and period tag (a.m. or p.m.)
     const displayHour = hour > 12 ? hour - 12 : hour;
     const formattedHour = String(displayHour).padStart(2, '0');
     const period = hour >= 12 ? 'p.m.' : 'a.m.';
 
-    // 4 sessions per hour with 5-minute buffer
     const intervals = [
       { start: '00', end: '10' },
       { start: '15', end: '25' },
@@ -62,16 +59,13 @@ function generateDefaultSlots() {
     ];
 
     for (const interval of intervals) {
-      // Cut off after 4:25 p.m. session (stops before 4:30 p.m.)
       if (hour === 16 && parseInt(interval.start, 10) >= 30) break;
-
       slots.push(`${formattedHour}:${interval.start} ${period} - ${formattedHour}:${interval.end} ${period}`);
     }
   }
   return slots;
 }
 
-// Helper function to initialize or retrieve system settings
 async function getSystemSettings() {
   let settings = await Setting.findOne();
   const defaultSlots = generateDefaultSlots();
@@ -91,7 +85,6 @@ async function getSystemSettings() {
 app.get('/', async (req, res) => {
   try {
     const settings = await getSystemSettings();
-    
     res.render('index', { 
       slots: settings.orderedSlots, 
       settings,
@@ -104,22 +97,14 @@ app.get('/', async (req, res) => {
   }
 });
 
-// 2. Submit Booking Route & Display Confirmation Summary
+// 2. Submit Booking Route
 app.post('/book', async (req, res) => {
   try {
     const { name, email, phone, timeSlot } = req.body;
-
-    const newBooking = new Booking({
-      name,
-      email,
-      phone,
-      timeSlot
-    });
-
+    const newBooking = new Booking({ name, email, phone, timeSlot });
     await newBooking.save();
 
     const settings = await getSystemSettings();
-
     res.render('index', { 
       slots: settings.orderedSlots,
       settings,
@@ -132,12 +117,37 @@ app.post('/book', async (req, res) => {
   }
 });
 
-// --- Admin Basic Authentication Middleware ---
+// --- View-Only Authentication & Route ---
+const viewAuth = basicAuth({
+  users: { 
+    [process.env.VIEW_USER || 'viewer']: process.env.VIEW_PASS || 'view2026pass' 
+  },
+  challenge: true,
+  realm: 'APSS Cave View-Only Area'
+});
+
+app.get('/view/dashboard', viewAuth, async (req, res) => {
+  try {
+    const bookings = await Booking.find({}).sort({ createdAt: -1 }).lean();
+    const settings = await getSystemSettings();
+
+    res.render('view-dashboard', {
+      bookings,
+      settings,
+      slots: settings.orderedSlots
+    });
+  } catch (error) {
+    console.error('Error rendering view dashboard:', error);
+    res.status(500).send('Error loading dashboard');
+  }
+});
+
+// --- Admin Authentication Middleware ---
 app.use('/admin', basicAuth({
   users: { 
     [process.env.ADMIN_USER || 'admin']: process.env.ADMIN_PASS || 'cave2026pass' 
   },
-  challenge: true, // Prompts browser native login dialog
+  challenge: true,
   realm: 'APSS Cave Admin Area'
 }));
 
@@ -182,12 +192,10 @@ app.post('/admin/settings', async (req, res) => {
     const { defaultQuota, customQuotas } = req.body;
     const settings = await getSystemSettings();
 
-    // Update default quota
     if (defaultQuota) {
       settings.defaultQuota = parseInt(defaultQuota, 10) || 10;
     }
 
-    // Safely parse and map custom quotas
     const quotaMap = new Map();
     if (customQuotas && typeof customQuotas === 'object') {
       for (const [slot, quotaVal] of Object.entries(customQuotas)) {

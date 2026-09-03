@@ -4,228 +4,187 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard - APSS Cave Experience</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
-    body { background-color: #f4f7f6; color: #333; padding: 30px; }
-    .container { max-width: 1100px; margin: 0 auto; }
-    
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-    h1 { color: #2c3e50; }
-    .btn-logout { background-color: #e74c3c; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; font-weight: 600; }
-    
-    .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
-    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
-    .card h2 { color: #34495e; font-size: 1.3rem; border: none; padding: 0; }
-    
-    /* Sorting & Filter Controls */
-    .sort-control { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; font-weight: 600; color: #555; }
-    .sort-select { padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; font-size: 0.85rem; cursor: pointer; }
-
-    /* Table Styling */
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e0e0e0; }
-    th { background-color: #f8f9fa; color: #555; }
-    
-    .btn-delete { background-color: #e74c3c; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-    .btn-delete:hover { background-color: #c0392b; }
-
-    /* Drag-and-Drop Slot List */
-    .slot-list { list-style: none; padding: 0; }
-    .slot-item { background: #fafafa; border: 1px solid #ddd; padding: 12px 15px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: move; }
-    .slot-item.dragging { opacity: 0.5; background: #e3f2fd; }
-    .drag-handle { font-size: 1.2rem; color: #888; margin-right: 10px; }
-    
-    .quota-input { width: 80px; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
-    .btn-primary { background-color: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; margin-top: 15px; }
-    .btn-primary:hover { background-color: #2980b9; }
+    body {
+      background-color: #f8f9fa;
+      padding-top: 30px;
+      padding-bottom: 50px;
+    }
+    .card {
+      border: none;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      margin-bottom: 25px;
+    }
+    .drag-handle {
+      cursor: grab;
+      color: #6c757d;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
   </style>
 </head>
 <body>
-
   <div class="container">
-    <header>
-      <h1>Admin Management Dashboard</h1>
-      <a href="/admin/logout" class="btn-logout">Logout</a>
-    </header>
-
-    <!-- Active Bookings Table with Sorting Options -->
-    <div class="card">
-      <div class="card-header">
-        <h2>Active Reservations (<%= (typeof bookings !== 'undefined') ? bookings.length : 0 %>)</h2>
-        
-        <!-- Booking Table Sorting Options -->
-        <div class="sort-control">
-          <label for="tableSortSelect">Sort By:</label>
-          <select id="tableSortSelect" class="sort-select" onchange="sortTableBookings()">
-            <option value="time-asc">Time Slot (Earliest First)</option>
-            <option value="time-desc">Time Slot (Latest First)</option>
-            <option value="date-asc">Date (Earliest First)</option>
-            <option value="date-desc">Date (Latest First)</option>
-            <option value="name-asc">Name (A - Z)</option>
-          </select>
-        </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="h3 mb-0">APSS Cave Experience</h1>
+        <p class="text-muted mb-0">Admin Management Dashboard</p>
       </div>
-
-      <% if (typeof bookings === 'undefined' || bookings.length === 0) { %>
-        <p>No reservations recorded yet.</p>
-      <% } else { %>
-        <table id="bookingsTable">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Time Slot (24h)</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="bookingsTbody">
-            <% bookings.forEach(b => { %>
-              <tr data-date="<%= new Date(b.createdAt).getTime() %>" data-time="<%= b.timeSlot %>" data-name="<%= (b.name || '').toLowerCase() %>">
-                <td><%= new Date(b.createdAt).toLocaleDateString() %></td>
-                <td><strong><%= b.timeSlot %></strong></td>
-                <td><%= b.name %></td>
-                <td><%= b.email %></td>
-                <td><%= b.phone || 'N/A' %></td>
-                <td>
-                  <form action="/admin/bookings/delete/<%= b._id %>" method="POST" onsubmit="return confirm('Delete this booking entry?');">
-                    <button type="submit" class="btn-delete">Delete</button>
-                  </form>
-                </td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      <% } %>
+      <a href="/view/dashboard" class="btn btn-outline-secondary btn-sm" target="_blank">View Read-Only Mode</a>
     </div>
 
-    <!-- System Settings & Slot Reordering -->
-    <div class="card">
-      <h2>Time Slot Configuration & Quotas (24-Hour Format)</h2>
-      <p style="margin-bottom: 15px; color: #666; font-size: 0.9rem;">Drag and drop time slots to reorder them on the public page.</p>
-
-      <form action="/admin/settings" method="POST">
-        <div style="margin-bottom: 20px;">
-          <label style="font-weight: 600; display: block; margin-bottom: 5px;">Default Capacity per Slot:</label>
-          <input type="number" name="defaultQuota" value="<%= settings.defaultQuota %>" min="1" required style="padding: 8px; width: 120px;">
+    <!-- Overview Metrics -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="text-muted small">Total Active Bookings</div>
+          <div class="h2 mb-0 fw-bold"><%= bookings.length %></div>
         </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="text-muted small">Default Slot Capacity</div>
+          <div class="h2 mb-0 fw-bold"><%= settings.defaultQuota %> attendees</div>
+        </div>
+      </div>
+    </div>
 
-        <ul class="slot-list" id="sortableSlotList">
+    <!-- Bookings Table -->
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0">Manage Reservations</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Time Slot</th>
+                <th>Booking Date</th>
+                <th class="text-end pe-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (bookings.length === 0) { %>
+                <tr>
+                  <td colspan="7" class="text-center py-4 text-muted">No reservations recorded yet.</td>
+                </tr>
+              <% } else { %>
+                <% bookings.forEach((booking, index) => { %>
+                  <tr>
+                    <td class="ps-3 text-muted"><%= index + 1 %></td>
+                    <td class="fw-semibold"><%= booking.name %></td>
+                    <td><%= booking.email %></td>
+                    <td><%= booking.phone || '-' %></td>
+                    <td><span class="badge bg-primary"><%= booking.timeSlot %></span></td>
+                    <td class="text-muted small"><%= new Date(booking.createdAt).toLocaleString() %></td>
+                    <td class="text-end pe-3">
+                      <form action="/admin/bookings/delete/<%= booking._id %>" method="POST" onsubmit="return confirm('Are you sure you want to delete this booking?');" style="display:inline;">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Capacity & Quota Settings Form -->
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0">Slot Capacity Settings</h5>
+      </div>
+      <div class="card-body">
+        <form action="/admin/settings" method="POST">
+          <div class="mb-4 col-md-4">
+            <label for="defaultQuota" class="form-label fw-bold">Default Capacity Per Slot</label>
+            <input type="number" class="form-control" id="defaultQuota" name="defaultQuota" value="<%= settings.defaultQuota %>" min="1" required>
+          </div>
+
+          <h6 class="fw-bold mb-3">Custom Slot Capacity Overrides</h6>
+          <div class="row g-3 mb-4">
+            <% slots.forEach(slot => { %>
+              <div class="col-md-4">
+                <label class="form-label small text-muted mb-1"><%= slot %></label>
+                <input type="number" class="form-control form-control-sm" name="customQuotas[<%= slot %>]" 
+                       value="<%= settings.customQuotas && settings.customQuotas.get ? (settings.customQuotas.get(slot) || '') : '' %>" 
+                       placeholder="Default (<%= settings.defaultQuota %>)" min="0">
+              </div>
+            <% }) %>
+          </div>
+
+          <button type="submit" class="btn btn-primary">Save Capacity Settings</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Drag-and-Drop Slot Reordering -->
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0">Reorder Time Slots</h5>
+        <p class="text-muted small mb-0">Drag and drop sessions to change the order displayed on the booking page.</p>
+      </div>
+      <div class="card-body">
+        <ul id="slotList" class="list-group mb-3">
           <% slots.forEach(slot => { %>
-            <li class="slot-item" draggable="true" data-slot="<%= slot %>">
-              <div>
-                <span class="drag-handle">☰</span>
-                <strong><%= slot %></strong>
-              </div>
-              <div>
-                <label style="font-size: 0.85rem; color: #555;">Custom Limit: </label>
-                <input type="number" name="customQuotas[<%= slot %>]" 
-                       value="<%= (settings.customQuotas && settings.customQuotas.has(slot)) ? settings.customQuotas.get(slot) : '' %>" 
-                       placeholder="<%= settings.defaultQuota %>" 
-                       min="0" class="quota-input">
-              </div>
+            <li class="list-group-item d-flex align-items-center" data-slot="<%= slot %>">
+              <span class="drag-handle me-3">&#x2630;</span>
+              <span><%= slot %></span>
             </li>
           <% }) %>
         </ul>
-
-        <button type="submit" class="btn-primary">Save Settings & Quotas</button>
-      </form>
+        <button id="saveOrderBtn" class="btn btn-success">Save Slot Order</button>
+        <span id="orderMessage" class="ms-3 small"></span>
+      </div>
     </div>
   </div>
 
   <script>
-    // --- Sort Active Reservations Table ---
-    function sortTableBookings() {
-      const sortValue = document.getElementById('tableSortSelect').value;
-      const tbody = document.getElementById('bookingsTbody');
-      if (!tbody) return;
-
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-
-      rows.sort((a, b) => {
-        const dateA = parseInt(a.getAttribute('data-date')) || 0;
-        const dateB = parseInt(b.getAttribute('data-date')) || 0;
-        const timeA = a.getAttribute('data-time') || '';
-        const timeB = b.getAttribute('data-time') || '';
-        const nameA = a.getAttribute('data-name') || '';
-        const nameB = b.getAttribute('data-name') || '';
-
-        switch (sortValue) {
-          case 'time-asc':
-            return timeA.localeCompare(timeB) || dateA - dateB;
-          case 'time-desc':
-            return timeB.localeCompare(timeA) || dateB - dateA;
-          case 'date-asc':
-            return dateA - dateB || timeA.localeCompare(timeB);
-          case 'date-desc':
-            return dateB - dateA || timeB.localeCompare(timeA);
-          case 'name-asc':
-            return nameA.localeCompare(nameB);
-          default:
-            return 0;
-        }
-      });
-
-      rows.forEach(row => tbody.appendChild(row));
-    }
-
-    // --- HTML5 Drag and Drop Script for Reordering Slots ---
-    const slotList = document.getElementById('sortableSlotList');
-    let draggedItem = null;
-
-    slotList.addEventListener('dragstart', (e) => {
-      draggedItem = e.target.closest('.slot-item');
-      draggedItem.classList.add('dragging');
+    // Initialize Sortable.js for drag-and-drop reordering
+    const slotList = document.getElementById('slotList');
+    const sortable = new Sortable(slotList, {
+      animation: 150,
+      handle: '.drag-handle'
     });
 
-    slotList.addEventListener('dragend', (e) => {
-      if (draggedItem) {
-        draggedItem.classList.remove('dragging');
-        draggedItem = null;
-        saveSlotOrder();
-      }
-    });
+    // Handle AJAX request to save new slot order
+    document.getElementById('saveOrderBtn').addEventListener('click', async () => {
+      const items = slotList.querySelectorAll('li');
+      const orderedSlots = Array.from(items).map(item => item.getAttribute('data-slot'));
+      const msgLabel = document.getElementById('orderMessage');
 
-    slotList.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      const afterElement = getDragAfterElement(slotList, e.clientY);
-      if (afterElement == null) {
-        slotList.appendChild(draggedItem);
-      } else {
-        slotList.insertBefore(draggedItem, afterElement);
-      }
-    });
+      msgLabel.innerText = 'Saving...';
+      msgLabel.className = 'ms-3 small text-muted';
 
-    function getDragAfterElement(container, y) {
-      const draggableElements = [...container.querySelectorAll('.slot-item:not(.dragging)')];
-      return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-          return { offset: offset, element: child };
-        } else {
-          return closest;
-        }
-      }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-
-    async function saveSlotOrder() {
-      const orderedSlots = [...slotList.querySelectorAll('.slot-item')].map(item => item.dataset.slot);
       try {
-        await fetch('/admin/slots/reorder', {
+        const response = await fetch('/admin/slots/reorder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ orderedSlots })
         });
+
+        if (response.ok) {
+          msgLabel.innerText = 'Slot order saved successfully!';
+          msgLabel.className = 'ms-3 small text-success';
+        } else {
+          msgLabel.innerText = 'Failed to save order.';
+          msgLabel.className = 'ms-3 small text-danger';
+        }
       } catch (err) {
-        console.error('Failed to update slot order:', err);
+        msgLabel.innerText = 'Error connecting to server.';
+        msgLabel.className = 'ms-3 small text-danger';
       }
-    }
-
-    // Apply default table sorting on load
-    document.addEventListener('DOMContentLoaded', sortTableBookings);
+    });
   </script>
-
 </body>
 </html>

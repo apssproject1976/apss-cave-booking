@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>View-Only Dashboard - APSS Cave Experience</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      padding-top: 30px;
+      padding-bottom: 50px;
+    }
+    .card {
+      border: none;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      margin-bottom: 25px;
+    }
+    .badge-view-only {
+      background-color: #6c757d;
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1 class="h3 mb-0">APSS Cave Experience</h1>
+        <p class="text-muted mb-0">View-Only Schedule & Reservations</p>
+      </div>
+      <span class="badge badge-view-only p-2">Read-Only Mode</span>
+    </div>
+
+    <!-- Overview Metrics -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="text-muted small">Total Bookings</div>
+          <div class="h2 mb-0 fw-bold"><%= bookings.length %></div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card p-3">
+          <div class="text-muted small">Default Slot Capacity</div>
+          <div class="h2 mb-0 fw-bold"><%= settings.defaultQuota %> attendees</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bookings Table -->
+    <div class="card">
+      <div class="card-header bg-white py-3">
+        <h5 class="card-title mb-0">Current Reservations</h5>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Time Slot</th>
+                <th>Booking Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (bookings.length === 0) { %>
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">No reservations recorded yet.</td>
+                </tr>
+              <% } else { %>
+                <% bookings.forEach((booking, index) => { %>
+                  <tr>
+                    <td class="ps-3 text-muted"><%= index + 1 %></td>
+                    <td class="fw-semibold"><%= booking.name %></td>
+                    <td><%= booking.email %></td>
+                    <td><%= booking.phone || '-' %></td>
+                    <td><span class="badge bg-primary"><%= booking.timeSlot %></span></td>
+                    <td class="text-muted small"><%= new Date(booking.createdAt).toLocaleString() %></td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

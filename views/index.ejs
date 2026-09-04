@@ -31,9 +31,9 @@
     <div class="card booking-card p-4 p-md-5">
       <div class="text-center mb-4">
         <h1 class="h3 fw-bold mb-1"><%= settings.title %></h1>
-        <p class="text-muted small mb-1"><%= settings.subtitle || 'Date: 10 October 2026' %></p>
-        <p class="text-muted small mb-1">Time: 10:00 - 16:30</p>
-        <p class="text-muted small mb-0">Venue: Z216, Z core, PolyU</p>
+        <p class="text-muted small mb-1"><%= settings.subtitle || 'Select an available time slot to reserve your experience' %></p>
+        <p class="text-muted small mb-1">Please arrive 5 minutes prior to your selected session.</p>
+        <p class="text-muted small mb-0">Each session is limited to guaranteed quota bookings only.</p>
       </div>
 
       <% if (typeof error !== 'undefined' && error) { %>
@@ -51,7 +51,7 @@
           <a href="/" class="btn btn-outline-success btn-sm">Book Another Session</a>
         </div>
       <% } else { %>
-        <form id="bookingForm">
+        <form id="bookingForm" action="/book" method="POST">
           <div class="mb-3">
             <label for="name" class="form-label fw-semibold">Full Name *</label>
             <input type="text" class="form-control" id="name" name="name" required placeholder="">
@@ -101,46 +101,5 @@
       <% } %>
     </div>
   </div>
-
-  <script>
-    const form = document.getElementById('bookingForm');
-    if (form) {
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const submitBtn = document.getElementById('submitBtn');
-        submitBtn.disabled = true;
-        submitBtn.innerText = 'Processing...';
-
-        const payload = {
-          name: document.getElementById('name').value,
-          email: document.getElementById('email').value,
-          phone: document.getElementById('phone').value,
-          timeSlot: document.getElementById('timeSlot').value
-        };
-
-        try {
-          const res = await fetch('/api/bookings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-
-          if (data.success) {
-            window.location.href = `/confirmation?name=${encodeURIComponent(payload.name)}&email=${encodeURIComponent(payload.email)}&slot=${encodeURIComponent(payload.timeSlot)}`;
-          } else {
-            alert(data.message || 'Failed to complete booking.');
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'Confirm Reservation';
-          }
-        } catch (err) {
-          console.error(err);
-          alert('Network error. Please try again.');
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'Confirm Reservation';
-        }
-      });
-    }
-  </script>
 </body>
 </html>

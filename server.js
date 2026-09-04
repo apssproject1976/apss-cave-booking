@@ -35,7 +35,7 @@ const settingSchema = new mongoose.Schema({
   logoUrl: { type: String, default: '' },
   logoWidth: { type: Number, default: 120 },
   bgImageUrl: { type: String, default: '' },
-  defaultQuota: { type: Number, default: 10 },
+  defaultQuota: { type: Number, default: 5 },
   customQuotas: { type: Map, of: Number, default: {} },
   orderedSlots: { type: [String], default: [] }
 });
@@ -74,7 +74,7 @@ async function getSystemSettings() {
   const defaultSlots = generateDefaultSlots();
 
   if (!settings) {
-    settings = await Setting.create({ orderedSlots: defaultSlots });
+    settings = await Setting.create({ orderedSlots: defaultSlots, defaultQuota: 5 });
   } else if (!settings.orderedSlots || settings.orderedSlots.length === 0) {
     settings.orderedSlots = defaultSlots;
     await settings.save();
@@ -239,7 +239,7 @@ app.post('/admin/settings', async (req, res) => {
     if (bgImageUrl !== undefined) settings.bgImageUrl = bgImageUrl.trim();
 
     if (defaultQuota) {
-      settings.defaultQuota = parseInt(defaultQuota, 10) || 10;
+      settings.defaultQuota = parseInt(defaultQuota, 10) || 5;
     }
 
     const quotaMap = new Map();

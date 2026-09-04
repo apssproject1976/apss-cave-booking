@@ -24,20 +24,16 @@
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     }
-    .site-logo {
-      width: <%= settings.logoWidth || 120 %>px;
-      height: auto;
-      object-fit: contain;
-    }
   </style>
 </head>
 <body>
   <div class="container col-md-8 col-lg-6">
     <div class="card booking-card p-4 p-md-5">
       <div class="text-center mb-4">
-        <img src="<%= settings.logoUrl || '/uploads/logo.png' %>" alt="Logo" class="site-logo mb-3" onerror="this.src='/uploads/logo.png';">
         <h1 class="h3 fw-bold mb-1"><%= settings.title %></h1>
-        <p class="text-muted small"><%= settings.subtitle || 'Select an available time slot to reserve your experience' %></p>
+        <p class="text-muted small mb-1"><%= settings.subtitle || 'Date: 10 October 2026' %></p>
+        <p class="text-muted small mb-1">Time: 10:00 - 16:30</p>
+        <p class="text-muted small mb-0">Venue: Z216, Z core, PolyU</p>
       </div>
 
       <% if (typeof error !== 'undefined' && error) { %>
@@ -58,17 +54,17 @@
         <form id="bookingForm">
           <div class="mb-3">
             <label for="name" class="form-label fw-semibold">Full Name *</label>
-            <input type="text" class="form-control" id="name" name="name" required placeholder="Enter full name">
+            <input type="text" class="form-control" id="name" name="name" required placeholder="">
           </div>
 
           <div class="mb-3">
             <label for="email" class="form-label fw-semibold">Email Address *</label>
-            <input type="email" class="form-control" id="email" name="email" required placeholder="name@example.com">
+            <input type="email" class="form-control" id="email" name="email" required placeholder="">
           </div>
 
           <div class="mb-3">
             <label for="phone" class="form-label fw-semibold">Phone Number (Optional)</label>
-            <input type="tel" class="form-control" id="phone" name="phone" placeholder="e.g. 91234567">
+            <input type="tel" class="form-control" id="phone" name="phone" placeholder="">
           </div>
 
           <div class="mb-4">

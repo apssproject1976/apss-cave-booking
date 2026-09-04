@@ -31,9 +31,9 @@
     <div class="card booking-card p-4 p-md-5">
       <div class="text-center mb-4">
         <h1 class="h3 fw-bold mb-1"><%= settings.title %></h1>
-        <p class="text-muted small mb-1"><%= settings.subtitle || 'Select an available time slot to reserve your experience' %></p>
-        <p class="text-muted small mb-1">Please arrive 5 minutes prior to your selected session.</p>
-        <p class="text-muted small mb-0">Each session is limited to guaranteed quota bookings only.</p>
+        <p class="text-muted small mb-1"><%= settings.subtitle || 'Date: 10 October 2026' %></p>
+        <p class="text-muted small mb-1">Time: 10:00 - 16:30</p>
+        <p class="text-muted small mb-0">Venue: Z216, Z core, The HK PolyU</p>
       </div>
 
       <% if (typeof error !== 'undefined' && error) { %>
@@ -44,7 +44,7 @@
 
       <% if (typeof success !== 'undefined' && success && typeof booking !== 'undefined' && booking) { %>
         <div class="alert alert-success" role="alert">
-          <h5 class="alert-heading fw-bold">Booking Confirmed!</h5>
+          <h5 class="alert-heading fw-bold">Booking Confirmed!, Please take a screenshot of this page for your records.</h5>
           <p class="mb-1">Thank you, <strong><%= booking.name %></strong>.</p>
           <p class="mb-1"><strong>Email:</strong> <%= booking.email %></p>
           <p class="mb-3"><strong>Time Slot:</strong> <%= booking.timeSlot %></p>
